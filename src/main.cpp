@@ -11,12 +11,10 @@
 #include <iomanip>
 #include "ArgumentParser.h"
 #include "ConsoleUI.h"
+#include "Sniffer.h"
 
 #define MAC_ADDR_LENGHT 18
 
-// this needs to be global for signal_handler() able to stop pcap loop
-pcap_t* handle;
-//ConsoleUI myUI;
 
 void print_mac_addr(const std::string desc, const uint8_t* addrPtr)
 {
@@ -132,142 +130,34 @@ void print_data(bpf_u_int32 len, const u_char* packet)
     }
 }
 
-void packet_handler(u_char* user, const struct pcap_pkthdr* header, const u_char* packet) 
-{
-    // Unused parameter to avoid compiler warnings
-    (void)user;
-
-    // Parse Ethernet header
-    const struct ether_header* ethernet_header = (struct ether_header*)packet;
-
-
-    // Print IP related things
-    if (ntohs(ethernet_header->ether_type) == ETHERTYPE_IP) 
-    {
-        const struct ip* ip_header = (struct ip*)(packet + sizeof(struct ether_header));
-
-        char ipAddr[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET,&(ip_header->ip_src), ipAddr, INET_ADDRSTRLEN);
-        //myUI.RefreshData(ipAddr);
-    }
-
-    //// Print ethernet header related things
-    //print_time("timestamp: ", header->ts);
-    ////print_mac_addr("src MAC: ", ethernet_header->ether_shost);
-    ////print_mac_addr("dst MAC: ", ethernet_header->ether_dhost);
-    //std::cout << "frame length: " << header->len << " bytes" << std::endl;
-
-    ////std::map<std::string, int>
-
-    //// Print IP related things
-    //if (ntohs(ethernet_header->ether_type) == ETHERTYPE_IP) 
-    //{
-    //    const struct ip* ip_header = (struct ip*)(packet + sizeof(struct ether_header));
-    //    print_ip_addr("src IP: ", &(ip_header->ip_src));
-    //    print_ip_addr("dst IP: ", &(ip_header->ip_dst));
-    //    print_ports(ip_header->ip_p, ip_header->ip_hl * 4, packet);
-    //}
-    //else if (ntohs(ethernet_header->ether_type) == ETHERTYPE_IPV6) 
-    //{
-    //    const struct ip6_hdr* ipv6_header = (struct ip6_hdr*)(packet + sizeof(struct ether_header));
-    //    print_ipv6_addr("src IP: ", &(ipv6_header->ip6_src));
-    //    print_ipv6_addr("dst IP: ", &(ipv6_header->ip6_dst));
-    //    print_ports(ipv6_header->ip6_ctlun.ip6_un1.ip6_un1_nxt, (ipv6_header->ip6_ctlun.ip6_un1.ip6_un1_plen), packet);
-    //}
-
-    ////print_data(header->caplen, packet);
-    //std::cout << std::endl;
-}
-
 // Function to handle interrupt signal
 void signal_handler(int signum) 
 {
-    pcap_breakloop(handle); // stop capturing packets when got interrupt signal
-}
-
-int print_interfaces(char* errBuf)
-{
-    pcap_if_t *interfaces;
-
-    // Retrieve list of available network interfaces
-    if (pcap_findalldevs(&interfaces, errBuf) == -1) 
-    {
-        std::cerr << "Error finding devices: " << errBuf << std::endl;
-        return 1;
-    }
-
-    // Print list of interfaces
-    for (pcap_if_t *dev = interfaces; dev != nullptr; dev = dev->next) 
-    {
-        std::cout << dev->name << std::endl;
-    }
-
-    // Free list
-    pcap_freealldevs(interfaces);
-    return 0;
+    Sniffer::stop_capture();
 }
     
 int main(int argc, char *argv[]) 
 {
-    std::cerr << "Here" << std::endl << std::flush;
+    // Register signal handler for interrupt signal (Ctrl+C)
+    signal(SIGINT, signal_handler);
 
-    std::cout << "WEWEW" << std::endl << std::flush;
-    return 10;
+    // helper variable to check if err occured in object constructors
+    bool err = false;
 
+    // Parse CLI arguments
+    ArgumentParser options(argc, argv, &err);
+    if (err == true)
+        return 1;
 
-    //// Register signal handler for interrupt signal (Ctrl+C)
-    //signal(SIGINT, signal_handler);
+    // Create sniffer
+    Sniffer PacketSniffer(options.get_interface(), &err);
+    if (err == true)
+        return 1;
 
-    //// Parse CLI arguments
-    //bool err;
-    //ArgumentParser options(argc, argv, &err);
-    //if (err == true)
-    //{
-    //    std::cerr << "Error parsing arguments." << std::endl;
-    //    return 1;
-    //}
+    // Create GUI
+    ConsoleUI myGUI;
 
-    //char errBuf[PCAP_ERRBUF_SIZE];
-
-    //// If interface is not set, print available interfaces and exit
-    //if (options.get_interface() == nullptr)
-    //    return print_interfaces(errBuf);
-
-    //// Open device in promiscuous mode
-    //handle = pcap_open_live(options.get_interface(), BUFSIZ, 1, 1000, errBuf);
-    //if (handle == NULL) {
-    //    std::cerr << "Couldn't open device " << options.get_interface() << ": " << errBuf << std::endl;
-    //    return 1;
-    //}
-
-    //// APPLYING FILTER
-    ////std::string filterExpression = options.create_filter();
-
-    ////// Compile the filter
-    ////struct bpf_program filter;
-    ////if (pcap_compile(handle, &filter, filterExpression.c_str(), 0, PCAP_NETMASK_UNKNOWN) == -1) 
-    ////{
-    ////    std::cerr << "Error compiling filter: " << pcap_geterr(handle) << std::endl;
-    ////    return 1;
-    ////}
-
-    ////// Apply filter
-    ////if (pcap_setfilter(handle, &filter) == -1) 
-    ////{
-    ////    std::cerr << "Error applying filter: " << pcap_geterr(handle) << std::endl;
-    ////    return 1;
-    ////}
-
-    ////// Free filter memory
-    ////pcap_freecode(&filter);
-
-    //myUI.RefreshData("");
-
-    //// Start packet capture
-    //pcap_loop(handle, -1, packet_handler, NULL);
-
-    //// Close device when done capturing
-    //pcap_close(handle);
+    PacketSniffer.start_capture();
 
     return 0;
 }

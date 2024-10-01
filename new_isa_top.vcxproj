@@ -83,10 +83,12 @@
     <ClCompile Include="src\ArgumentParser.cpp" />
     <ClCompile Include="src\ConsoleUI.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Sniffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ArgumentParser.h" />
     <ClInclude Include="src\ConsoleUI.h" />
+    <ClInclude Include="src\Sniffer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Makefile" />

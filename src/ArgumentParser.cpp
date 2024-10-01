@@ -38,6 +38,7 @@ ArgumentParser::ArgumentParser(int argc, char *argv[], bool* err)
                 if (!sortByBytes && !sortByPackets)
                 {
                     std::cerr << "Usage: " << argv[0] << " [options]\n";
+                    std::cerr << "Error parsing arguments." << std::endl;
                     *err = true;
                     return;
                 }
@@ -47,6 +48,7 @@ ArgumentParser::ArgumentParser(int argc, char *argv[], bool* err)
 
             default:
                 std::cerr << "Usage: " << argv[0] << " [options]\n";
+                std::cerr << "Error parsing arguments." << std::endl;
                 *err = true;
                 return;
         }
@@ -92,7 +94,7 @@ int ArgumentParser::get_packetCount()
     return packetCount;
 }
 
-char *ArgumentParser::get_interface()
+char* ArgumentParser::get_interface()
 {
     return interface;
 }
