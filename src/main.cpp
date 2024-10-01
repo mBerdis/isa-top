@@ -15,21 +15,6 @@
 
 #define MAC_ADDR_LENGHT 18
 
-
-void print_mac_addr(const std::string desc, const uint8_t* addrPtr)
-{
-    char macAddr[MAC_ADDR_LENGHT];
-    sprintf(macAddr, "%02x:%02x:%02x:%02x:%02x:%02x",
-        addrPtr[0],
-        addrPtr[1],
-        addrPtr[2],
-        addrPtr[3],
-        addrPtr[4],
-        addrPtr[5]);
-
-    std::cout << desc << macAddr << std::endl;
-}
-
 void print_ip_addr(const std::string desc, const in_addr* addrPtr)
 {
     char ipAddr[INET_ADDRSTRLEN];
@@ -91,42 +76,6 @@ void print_ports(uint8_t protocol, unsigned int headerOffset, const u_char* pack
         const struct udphdr* udp_header = (struct udphdr*)(packet + sizeof(struct ether_header) + headerOffset);
         print_port("src port: ", udp_header->uh_sport);
         print_port("dst port: ", udp_header->uh_dport);
-    }
-}
-
-void print_data(bpf_u_int32 len, const u_char* packet)
-{
-    std::cout << std::endl;
-
-    for (size_t row = 0; row < len; row += 16)
-    {
-        std::cout << "0x" << std::setw(4) << std::setfill('0') << std::hex << static_cast<int>(row) << ":" << std::dec;
-
-        // Print data in hex format
-        for (size_t i = row; i < (row + 16) && i < len; i++) {
-            std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(packet[i]) << std::dec;
-        }
-
-        // Check if fill is needed to properly align second ascii part
-        int rowFill = len - row;
-        if (rowFill < 16)
-        {
-            std::cout << std::setw((16 - rowFill) * 3 + 1) << std::setfill(' ');
-        }
-
-        // Print data in ascii format
-        for (size_t i = row; i < (row + 16) && i < len; i++) 
-        {
-            if (i % 8 == 0)
-                std::cout << " ";
-
-            if (isprint(packet[i])) 
-                std::cout << packet[i];
-            else 
-                std::cout << ".";
-        }
-        
-        std::cout << std::endl;
     }
 }
 

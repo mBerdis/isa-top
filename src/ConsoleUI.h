@@ -8,7 +8,7 @@ public:
 	ConsoleUI();
 	~ConsoleUI();
 
-	static void RefreshData(const char* row);
+	static void RefreshData();
 	static void alarm_handler(int sig);
 };
 

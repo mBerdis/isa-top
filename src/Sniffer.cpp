@@ -1,5 +1,4 @@
 #include "Sniffer.h"
-#include <iostream>
 #include <netinet/in.h>
 #include <netinet/ether.h>
 #include <netinet/ip.h>
@@ -7,12 +6,12 @@
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
-int Sniffer::i = 0;
+
 pcap_t* Sniffer::handle = NULL;
+std::unordered_map<std::string, ConnectionInfo> Sniffer::networkCommunications;
 
 Sniffer::Sniffer(char* interface, bool* err)
 {
-    i = 0;
     // If interface is not set, print available interfaces and exit
     if (interface == nullptr)
     {
@@ -30,6 +29,8 @@ Sniffer::Sniffer(char* interface, bool* err)
         *err = true;
     }
 
+    networkCommunications.clear();
+    networkCommunications.reserve(10);
 
     // APPLYING FILTER
     //std::string filterExpression = options.create_filter();
@@ -93,49 +94,123 @@ int Sniffer::print_interfaces()
     return 0;
 }
 
+void Sniffer::extract_address(ConnectionInfo& connection, const ip* ipv4)
+{
+    char temp[INET_ADDRSTRLEN];
+
+    // Extract sender IP
+    inet_ntop(AF_INET, &(ipv4->ip_src), temp, INET_ADDRSTRLEN);
+    connection.senderIP = std::string(temp);
+
+    // Extract reciever IP
+    inet_ntop(AF_INET, &(ipv4->ip_dst), temp, INET_ADDRSTRLEN);
+    connection.receiverIP = std::string(temp);
+}
+
+void Sniffer::extract_address(ConnectionInfo& connection, const ip6_hdr* ipv6)
+{
+    char temp[INET6_ADDRSTRLEN];
+
+    // Extract sender IP
+    inet_ntop(AF_INET6, &(ipv6->ip6_src), temp, INET6_ADDRSTRLEN);
+    connection.senderIP = std::string(temp);
+
+    // Extract reciever IP
+    inet_ntop(AF_INET6, &(ipv6->ip6_dst), temp, INET6_ADDRSTRLEN);
+    connection.receiverIP = std::string(temp);
+}
+
+void Sniffer::extract_protocol(ConnectionInfo& connection, const uint8_t protocol, const unsigned int headerOffset, const u_char* packet)
+{
+    if (protocol == IPPROTO_TCP)
+    {
+        // Parse TCP header
+        const struct tcphdr* tcpHeader = (struct tcphdr*)(packet + sizeof(struct ether_header) + headerOffset);
+        connection.senderPort   = tcpHeader->th_sport;
+        connection.receiverPort = tcpHeader->th_dport;
+        connection.protocol     = "TCP";
+    }
+    else if (protocol == IPPROTO_UDP)
+    {
+        // Parse UDP header
+        const struct udphdr* udpHeader = (struct udphdr*)(packet + sizeof(struct ether_header) + headerOffset);
+        connection.senderPort   = udpHeader->uh_sport;
+        connection.receiverPort = udpHeader->uh_dport;
+        connection.protocol     = "UDP";
+    }
+    else 
+    {
+        connection.protocol = "UDP";
+    }
+}
+
 void Sniffer::packet_handler(u_char* user, const struct pcap_pkthdr* header, const u_char* packet)
 {
-    i++;
     // Unused parameter to avoid compiler warnings
     (void)user;
 
     // Parse Ethernet header
-    const struct ether_header* ethernet_header = (struct ether_header*)packet;
+    const struct ether_header* ethernetHeader = (struct ether_header*)packet;
 
+    ConnectionInfo connection;
 
-    // Print IP related things
-    if (ntohs(ethernet_header->ether_type) == ETHERTYPE_IP)
+    if (ntohs(ethernetHeader->ether_type) == ETHERTYPE_IP)
     {
-        const struct ip* ip_header = (struct ip*)(packet + sizeof(struct ether_header));
+        const struct ip* ipHeader = (struct ip*)(packet + sizeof(struct ether_header));
+        extract_address(connection, ipHeader);
+        
+        const unsigned int protHeaderOffset = ipHeader->ip_hl * 4;
+        extract_protocol(connection, ipHeader->ip_p, protHeaderOffset, packet);
 
-        char ipAddr[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &(ip_header->ip_src), ipAddr, INET_ADDRSTRLEN);
+    }
+    else if (ntohs(ethernetHeader->ether_type) == ETHERTYPE_IPV6)
+    {
+        const struct ip6_hdr* ipv6Header = (struct ip6_hdr*)(packet + sizeof(struct ether_header));
+        extract_address(connection, ipv6Header);
+
+        const unsigned int protHeaderOffset = ipv6Header->ip6_ctlun.ip6_un1.ip6_un1_plen;
+        extract_protocol(connection, ipv6Header->ip6_ctlun.ip6_un1.ip6_un1_nxt, protHeaderOffset, packet);
+    }
+
+    std::string key = generate_key(connection);
+
+    // Search for the connection key in the map
+    auto it = networkCommunications.find(key);
+
+    if (it != networkCommunications.end()) 
+    {
+        // If the key is found, update the existing connection info
+        it->second.totalBytes += header->len;  // Increment total received bytes
+        it->second.packetCount += 1;
+    }
+    else {
+        // If the key is not found, create a new ConnectionInfo and insert it
+        connection.totalBytes  = header->len;
+        connection.packetCount = 1;
+
+        // Add the new connection to the map
+        networkCommunications[key] = connection;
     }
 
     //// Print ethernet header related things
     //print_time("timestamp: ", header->ts);
-    ////print_mac_addr("src MAC: ", ethernet_header->ether_shost);
-    ////print_mac_addr("dst MAC: ", ethernet_header->ether_dhost);
-    //std::cout << "frame length: " << header->len << " bytes" << std::endl;
+}
 
-    ////std::map<std::string, int>
+std::string Sniffer::generate_key(const ConnectionInfo& connection)
+{
+    return  connection.senderIP + ":" + std::to_string(connection.senderPort) 
+            + " -> " +
+            connection.receiverIP + ":" + std::to_string(connection.receiverPort) 
+            + " (" +
+            connection.protocol + ")";
+}
 
-    //// Print IP related things
-    //if (ntohs(ethernet_header->ether_type) == ETHERTYPE_IP) 
-    //{
-    //    const struct ip* ip_header = (struct ip*)(packet + sizeof(struct ether_header));
-    //    print_ip_addr("src IP: ", &(ip_header->ip_src));
-    //    print_ip_addr("dst IP: ", &(ip_header->ip_dst));
-    //    print_ports(ip_header->ip_p, ip_header->ip_hl * 4, packet);
-    //}
-    //else if (ntohs(ethernet_header->ether_type) == ETHERTYPE_IPV6) 
-    //{
-    //    const struct ip6_hdr* ipv6_header = (struct ip6_hdr*)(packet + sizeof(struct ether_header));
-    //    print_ipv6_addr("src IP: ", &(ipv6_header->ip6_src));
-    //    print_ipv6_addr("dst IP: ", &(ipv6_header->ip6_dst));
-    //    print_ports(ipv6_header->ip6_ctlun.ip6_un1.ip6_un1_nxt, (ipv6_header->ip6_ctlun.ip6_un1.ip6_un1_plen), packet);
-    //}
+void Sniffer::clear_communications()
+{
+    networkCommunications.clear();
+}
 
-    ////print_data(header->caplen, packet);
-    //std::cout << std::endl;
+const std::unordered_map<std::string, ConnectionInfo>& Sniffer::get_communications()
+{
+    return networkCommunications;
 }
