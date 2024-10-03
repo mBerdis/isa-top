@@ -12,18 +12,22 @@ struct ConnectionInfo
 	int receiverPort;         // Destination port number
 
 	std::string protocol;     // Protocol
-	size_t totalBytes;        // Total bytes transferred in this connection
-	size_t packetCount;		  // Total packets transferred in this connection
 
-	ConnectionInfo(std::string s_ip, int s_port, std::string r_ip, int r_port, std::string prot) :
-		senderIP{ s_ip }, senderPort{ s_port },
-		receiverIP{ r_ip }, receiverPort{ r_port },
-		protocol{ prot }, totalBytes{ 0 }, packetCount{ 0 } {}
+	// Tx
+	double transmittedBytes;
+	double transmittedPackets;
+
+	// Rx
+	double recievedBytes;
+	double recievedPackets;
 
 	ConnectionInfo() : 
 		senderIP{ NULL }, senderPort{ 0 }, 
 		receiverIP{ NULL }, receiverPort{ 0 }, 
-		protocol{ NULL }, totalBytes{ 0 }, packetCount{ 0 } {}
+		protocol{ NULL }, 
+		transmittedBytes{ 0 }, transmittedPackets{ 0 },
+		recievedBytes{ 0 }, recievedPackets{ 0 }
+	{}
 };
 
 
@@ -52,5 +56,10 @@ private:
 	static void extract_address(ConnectionInfo& connection, const struct ip* ipv4);
 	static void extract_address(ConnectionInfo& connection, const struct ip6_hdr* ipv6);
 	static void extract_protocol(ConnectionInfo& connection, const uint8_t protocol, const unsigned int headerOffset, const u_char* packet);
+
+	// generates key for accessing communications map
 	static std::string generate_key(const ConnectionInfo& connection);
+
+	// generate_key() but switches sender and reciever to check if this packet is a response
+	static std::string generate_alternate_key(const ConnectionInfo& connection);
 };

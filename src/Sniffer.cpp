@@ -176,24 +176,33 @@ void Sniffer::packet_handler(u_char* user, const struct pcap_pkthdr* header, con
 
     // Search for the connection key in the map
     auto it = networkCommunications.find(key);
-
-    if (it != networkCommunications.end()) 
+    if (it != networkCommunications.end())
     {
         // If the key is found, update the existing connection info
-        it->second.totalBytes += header->len;  // Increment total received bytes
-        it->second.packetCount += 1;
-    }
-    else {
-        // If the key is not found, create a new ConnectionInfo and insert it
-        connection.totalBytes  = header->len;
-        connection.packetCount = 1;
-
-        // Add the new connection to the map
-        networkCommunications[key] = connection;
+        it->second.transmittedBytes += header->len;
+        it->second.transmittedPackets += 1;
+        return;
     }
 
-    //// Print ethernet header related things
-    //print_time("timestamp: ", header->ts);
+    // Else switch sender and reciever to check if this packet is a response
+    std::string alternateKey = generate_alternate_key(connection);
+
+    it = networkCommunications.find(alternateKey);
+    if (it != networkCommunications.end())
+    {
+        // If the alternate key is found, update the existing connection info as response
+        it->second.recievedBytes    += header->len;
+        it->second.recievedPackets  += 1;
+        return;
+    }
+
+    // Neither key matched, create a new ConnectionInfo and insert it to the map
+    // assuming first packet of the communication to be Tx
+    connection.transmittedBytes     = header->len;
+    connection.transmittedPackets   = 1;
+
+    // Add the new connection to the map
+    networkCommunications[key] = connection;
 }
 
 std::string Sniffer::generate_key(const ConnectionInfo& connection)
@@ -203,6 +212,15 @@ std::string Sniffer::generate_key(const ConnectionInfo& connection)
             connection.receiverIP + ":" + std::to_string(connection.receiverPort) 
             + " (" +
             connection.protocol + ")";
+}
+
+std::string Sniffer::generate_alternate_key(const ConnectionInfo& connection)
+{
+    return  connection.receiverIP + ":" + std::to_string(connection.receiverPort)
+        + " -> " +
+        connection.senderIP + ":" + std::to_string(connection.senderPort)
+        + " (" +
+        connection.protocol + ")";
 }
 
 void Sniffer::clear_communications()
