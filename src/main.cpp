@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
         return 1;
 
     // Create GUI
-    ConsoleUI myGUI;
+    ConsoleUI myGUI(options.get_sort_option());
 
     PacketSniffer.start_capture();
 

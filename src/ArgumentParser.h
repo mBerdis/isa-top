@@ -11,6 +11,7 @@ public:
     std::string create_filter();
     int get_packetCount();
     char* get_interface();
+    bool get_sort_option();
 
 private:
     char* interface;
@@ -18,7 +19,7 @@ private:
     bool tcp, udp, icmp4, icmp6, arp, ndp, igmp, mld;
     std::string filter;
 
-    bool sortByBytes, sortByPackets;
+    bool sortByBytes;
 
     void add_port_filters();
     void end_block();

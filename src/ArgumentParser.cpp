@@ -5,7 +5,7 @@ ArgumentParser::ArgumentParser(int argc, char *argv[], bool* err)
       dstPort(-1), srcPort(-1), tcp(false), udp(false), 
       icmp4(false), icmp6(false), arp(false),
       ndp(false), igmp(false), mld(false), filter(""),
-      sortByBytes(false), sortByPackets(false)
+      sortByBytes(true)
 {
     int opt;
 
@@ -31,12 +31,17 @@ ArgumentParser::ArgumentParser(int argc, char *argv[], bool* err)
             }
             case 's':
             {
-                sortByBytes     = optarg[0] == 'b' ? true : false;
-                sortByPackets   = optarg[0] == 'p' ? true : false;
-
-                // check if atleast one is true, if not wrong argument
-                if (!sortByBytes && !sortByPackets)
+                if (optarg[0] == 'b')
                 {
+                    sortByBytes = true; // default option
+                }
+                else if (optarg[0] == 'p')
+                {
+                    sortByBytes = false;
+                }
+                else
+                {
+                    // wrong argument
                     std::cerr << "Usage: " << argv[0] << " [options]\n";
                     std::cerr << "Error parsing arguments." << std::endl;
                     *err = true;
@@ -97,6 +102,11 @@ int ArgumentParser::get_packetCount()
 char* ArgumentParser::get_interface()
 {
     return interface;
+}
+
+bool ArgumentParser::get_sort_option()
+{
+    return sortByBytes;
 }
 
 void ArgumentParser::add_port_filters()

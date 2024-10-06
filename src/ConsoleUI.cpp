@@ -5,17 +5,21 @@
 #include <vector>
 #include <iostream>
 #include <signal.h>
-#include "Sniffer.h"
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
 
-ConsoleUI::ConsoleUI()
+bool ConsoleUI::sortBytes = true;
+
+ConsoleUI::ConsoleUI(bool sortByBytes)
 {
-    initscr();            // Initialize ncurses
-    cbreak();             // Disable line buffering, but still allow Ctrl+C
-    noecho();             // Don't echo input to the terminal
+    sortBytes = sortByBytes;
+
+    initscr();             // Initialize ncurses
+    cbreak();              // Disable line buffering, but still allow Ctrl+C
+    noecho();              // Don't echo input to the terminal
     keypad(stdscr, FALSE); // Disable special input handling like arrow keys
-    timeout(-1);          // Don't wait for user input (disable input completely)
+    timeout(-1);           // Don't wait for user input (disable input completely)
 
     signal(SIGALRM, alarm_handler);
 
@@ -52,15 +56,33 @@ void ConsoleUI::refresh_data()
     // Start printing from the third row
     int row = 2;
 
-    // Iterate through the map
-    for (const auto& entry : Sniffer::get_communications())
+
+    std::vector<std::pair<std::string, ConnectionInfo>> connectionsVec(Sniffer::get_communications().begin(), Sniffer::get_communications().end());
+
+    if (sortBytes)
     {
+        std::sort(connectionsVec.begin(), connectionsVec.end(), sort_by_bytes);
+    }
+    else
+    {
+        std::sort(connectionsVec.begin(), connectionsVec.end(), sort_by_packets);
+    }
+
+    
+    int entryCount = 0;
+
+    // Iterate through the map
+    for (const auto& entry : connectionsVec)
+    {
+        if (entryCount >= 10) break;  // show max 10 entries
         const ConnectionInfo& connection = entry.second;
 
         // Format the data as strings
         std::string src      = connection.senderIP + ":" + std::to_string(connection.senderPort);
         std::string dst      = connection.receiverIP + ":" + std::to_string(connection.receiverPort);
+
         std::string proto    = connection.protocol;
+        std::transform(proto.begin(), proto.end(), proto.begin(), ::toupper);
 
         std::string rx       = format_bandwidth(connection.recievedBytes * 8);
         std::string rxPacket = format_packets(connection.recievedPackets);
@@ -81,6 +103,7 @@ void ConsoleUI::refresh_data()
 
         // Move to the next row
         row++;
+        entryCount++;
     }
 
     Sniffer::clear_communications();
@@ -90,6 +113,18 @@ void ConsoleUI::refresh_data()
 void ConsoleUI::alarm_handler(int sig)
 {
     ConsoleUI::refresh_data();
+}
+
+bool ConsoleUI::sort_by_bytes(const std::pair<std::string, ConnectionInfo>& a, const std::pair<std::string, ConnectionInfo>& b) {
+    return a.second.transmittedBytes + a.second.recievedBytes
+           > 
+           b.second.transmittedBytes + b.second.recievedBytes;
+}
+
+bool ConsoleUI::sort_by_packets(const std::pair<std::string, ConnectionInfo>& a, const std::pair<std::string, ConnectionInfo>& b) {
+    return a.second.transmittedPackets + a.second.recievedPackets
+           > 
+           b.second.transmittedPackets + b.second.recievedPackets;
 }
 
 std::string ConsoleUI::format_packets(double packetsPerSecond)
