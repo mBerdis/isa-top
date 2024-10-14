@@ -1,0 +1,31 @@
+.TH ISA-TOP 1
+.SH NAME
+isa-top \- bandwith usage analyzer
+.SH AUTHOR
+Maroš Berdis (xberdi01), created in october 2024
+.SH SYNOPSIS
+.B isa-top
+.IR \fB\-i\ \fR\fIinterface\fR
+[\fB\-s\fR \fIb\fR | \fIp\fR]
+[\fB\-\-sort\fR \fIbytes\fR | \fIpackets\fR]
+.SH DESCRIPTION
+.B isa-top
+is a tool for displaying current bandwith usage on given interface. 
+Stats are refreshed every 1 second.
+.SH OPTIONS
+.TP
+.BR \-i ", " \-\-interface\ = \ \fIinterface\fR
+Set the interface to listen on. If none provided, the program lists available interfaces and exits.
+.TP
+.BR \-s ", " \-\-sort\ =\ \fIbytes\fR\ |\ \fIpackets\fR
+Set sort option. b \- bytes, p \- packets.
+Default option is bytes 
+
+.SH FILES
+.BR ArgumentParser.cpp,
+.BR ArgumentParser.h, 
+.BR ConsoleUI.cpp,
+.BR ConsoleUI.h,
+.BR main.cpp,
+.BR Sniffer.cpp,
+.BR Sniffer.h

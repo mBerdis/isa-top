@@ -1,3 +1,8 @@
+/*****************************************************************//**
+ * \file   Sniffer.cpp
+ * \author Maroš Berdis (xberdi01)
+ *********************************************************************/
+
 #include "Sniffer.h"
 #include <netinet/in.h>
 #include <netinet/ether.h>
@@ -155,8 +160,6 @@ void Sniffer::packet_handler(u_char* user, const struct pcap_pkthdr* header, con
 
     ConnectionInfo connection;
 
-    double lenght;
-
     if (ntohs(ethernetHeader->ether_type) == ETHERTYPE_IP)
     {
         const struct ip* ipHeader = (struct ip*)(packet + sizeof(struct ether_header));
@@ -164,9 +167,6 @@ void Sniffer::packet_handler(u_char* user, const struct pcap_pkthdr* header, con
         
         const unsigned int protHeaderOffset = ipHeader->ip_hl * 4;
         extract_protocol(connection, ipHeader->ip_p, protHeaderOffset, packet);
-
-        lenght = ipHeader->ip_len;
-
     }
     else if (ntohs(ethernetHeader->ether_type) == ETHERTYPE_IPV6)
     {

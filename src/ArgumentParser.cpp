@@ -1,3 +1,8 @@
+/*****************************************************************//**
+ * \file   ArgumentParser.cpp
+ * \author Maroš Berdis (xberdi01)
+ *********************************************************************/
+
 #include "ArgumentParser.h"
 
 ArgumentParser::ArgumentParser(int argc, char *argv[], bool* err)

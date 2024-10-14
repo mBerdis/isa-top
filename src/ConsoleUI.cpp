@@ -1,3 +1,8 @@
+/*****************************************************************//**
+ * \file   ConsoleUI.cpp
+ * \author Maroš Berdis (xberdi01)
+ *********************************************************************/
+
 #include "ConsoleUI.h"
 //#include <ncurses.h>
 #include <curses.h>
