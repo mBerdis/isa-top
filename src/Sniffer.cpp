@@ -62,8 +62,12 @@ Sniffer::Sniffer(char* interface, bool* err)
 Sniffer::~Sniffer()
 {
     // stop capture and close device
-    pcap_breakloop(handle);
-    pcap_close(handle);
+
+    if (handle != NULL)
+    {
+        pcap_breakloop(handle);
+        pcap_close(handle);
+    }
 }
 
 void Sniffer::start_capture()
